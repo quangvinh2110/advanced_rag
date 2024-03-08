@@ -45,7 +45,10 @@ def load_vector_db(DB_PATH="./db/"):
         index=index,
         docstore=InMemoryDocstore(memoryDocStoreDict),
         index_to_docstore_id=indexToDocStoreIdDict,
-        embedding_function=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cpu'})
+        embedding_function=HuggingFaceEmbeddings(
+            model_name='/home/vinhnq29/Public/advanced_RAG/langchain/model_hubs/sentence-transformers-all-MiniLM-L6-v2', 
+            model_kwargs={'device': 'cpu'}
+        )
     )
     return db
 
@@ -163,7 +166,8 @@ def ask(q):
 
 # Main execution block: populate and load the vector database, then use it to answer a sample question.
 if __name__=="__main__":
-    db = populate_vector_db(DB_PATH=DB_PATH)
+    if not os.path.exists(DB_PATH):
+        db = populate_vector_db(DB_PATH=DB_PATH)
     db = load_vector_db(DB_PATH=DB_PATH)
     # db = None
     ask("What is the capital of NJ?")
