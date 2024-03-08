@@ -45,7 +45,7 @@ def load_vector_db(DB_PATH="./db/"):
         index=index,
         docstore=InMemoryDocstore(memoryDocStoreDict),
         index_to_docstore_id=indexToDocStoreIdDict,
-        embedding_function=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cuda:0'})
+        embedding_function=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cpu'})
     )
     return db
 
@@ -118,8 +118,10 @@ def get_llm():
     return llm
 
 # Function to format a list of documents into a single string.
+# def format_docs(docs):
+#     return "\n\n".join(doc.page_content for doc in docs)
 def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
+    return "\n\n".join(doc for doc in docs)
 
 # Function to ask a question and receive an answer using the large language model and the document database.
 def ask(q):
@@ -141,10 +143,10 @@ def ask(q):
             "question": itemgetter("question"),
         }
         | rag_prompt_custom
-        | llm
-        | StrOutputParser()
+        # | llm
+        # | StrOutputParser()
     )
-    rag_chain_from_docs.invoke()
+    tmp = rag_chain_from_docs.invoke({"question": "sdf", "documents": ["bgf", "fgsf", "fsfs"]})
     rag_chain_with_source = RunnableMap(
         {"documents": db.as_retriever(), "question": RunnablePassthrough()}
     ) | {
@@ -161,7 +163,7 @@ def ask(q):
 
 # Main execution block: populate and load the vector database, then use it to answer a sample question.
 if __name__=="__main__":
-    # db = populate_vector_db(DB_PATH=DB_PATH)
-    # db = load_vector_db(DB_PATH=DB_PATH)
-    db = None
+    db = populate_vector_db(DB_PATH=DB_PATH)
+    db = load_vector_db(DB_PATH=DB_PATH)
+    # db = None
     ask("What is the capital of NJ?")
