@@ -1,12 +1,11 @@
 import uuid
-import copy
 import os
 import json
-from typing import List, Tuple, Optional, Callable
+from typing import List, Tuple, Optional, Callable, Any
 
 from ..utils import absoluteFilePaths
 
-from langchain.text_splitter import TokenTextSplitter
+from langchain.text_splitter import TextSplitter
 
 
 
@@ -36,9 +35,9 @@ def docs_chunking(
     input_dir: Optional[str],
     extension: Optional[str],
     docs: Optional[List[dict]], 
-    chunk_size: int, 
-    chunk_overlap: int,
-    output_dir: str
+    output_dir: str,
+    text_splitter: TextSplitter,
+    add_chunk_metadata: Callable[[Any, Any], dict]
 ) -> Tuple[List[str], List[dict]]:
     
     output_dir = os.path.abspath(output_dir)
@@ -52,65 +51,29 @@ def docs_chunking(
         raise ValueError(
             "You must provide extension of files in corpus folder"
         )
-    for doc in docs:
-        doc = copy.deepcopy(doc)
-        chunks = []
-        metadatas = []
         
-        # Split the content into smaller chunks for better manageability.
-        for chunk in TokenTextSplitter(chunk_size=chunk_size, 
-                                       chunk_overlap=chunk_overlap
-                                       ).split_text(doc.pop("text")):
-            random_uuid = str(uuid.uuid4())
+    chunks = []
+    metadatas = []
+    for doc in docs:
+        for chunk in text_splitter.split_text(doc["text"]):
+
             chunks.append(chunk)
             
-            chunk_file_path = f"{output_dir}/{random_uuid}.json"
-            open(chunk_file_path, "w").write(
-                json.dumps(chunk, ensure_ascii=False)
-            )
-            metadatas.append({
-                'wiki_file_path': wiki_file_path,
-                'wiki_chunk_file_path': wiki_chunk_file_path
-            })
-
-        # Add the text chunks and their metadata to the database.
-        db.add_texts(texts, metadatas)
-
-def populate_vector_db(DB_PATH="./db/"):
-    db = load_vector_db(DB_PATH=DB_PATH)
-
-    # Process each file in the 'wiki/' directory.
-    for wiki_file in os.listdir("wiki/"):
-        texts = []
-        metadatas = []
-        
-        wiki_file_path  = "wiki/"+wiki_file
-        wiki_chunks_dir = "wiki_chunks/"+wiki_file
-        os.makedirs(wiki_chunks_dir, exist_ok=True)
-       
-        # Read the content of the file.
-        content = open(wiki_file_path, "r").read()
-        # Split the content into smaller chunks for better manageability.
-        for chunk in TokenTextSplitter(chunk_size=256).split_text(content):
-            random_uuid = str(uuid.uuid4())
-            texts.append(chunk)
+            chunk_metadata = add_chunk_metadata(doc, chunk)
+            if "id" in chunk_metadata:
+                chunk_id = chunk_metadata["id"]
+            else:
+                chunk_id = str(uuid.uuid4())
+                chunk_metadata["id"] = chunk_id
+            chunk_filepath = f"{output_dir}/{chunk_id}.json"
+            chunk_metadata["filepath"] = chunk_filepath
             
-            wiki_chunk_file_path = wiki_chunks_dir+"/"+random_uuid+".txt"
-            open(wiki_chunk_file_path, "w").write(chunk)
-            metadatas.append({
-                'wiki_file_path': wiki_file_path,
-                'wiki_chunk_file_path': wiki_chunk_file_path
-            })
+            open(chunk_filepath, "w").write(
+                json.dumps({
+                    "text": chunk,
+                    **chunk_metadata
+                }, ensure_ascii=False, indent=4)
+            )
+            metadatas.append(chunk_metadata)
 
-        # Add the text chunks and their metadata to the database.
-        db.add_texts(texts, metadatas)
-        
-    # Save the components of the database if the directory does not exist.
-    if not os.path.exists(DB_PATH):
-        os.makedirs(DB_PATH)
-    
-    cloudpickle.dump(db.docstore._dict, open(DB_PATH+"memoryDocStoreDict.pkl", "wb"))
-    cloudpickle.dump(db.index_to_docstore_id, open(DB_PATH+"indexToDocStoreIdDict.pkl", "wb"))
-    faiss.write_index(db.index, DB_PATH+"faiss.index")
-    
-    return db
+    return chunks, metadatas

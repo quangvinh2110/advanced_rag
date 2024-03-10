@@ -1,10 +1,10 @@
 # Importing necessary libraries and modules.
+import os
 import uuid
 from langchain.text_splitter import TokenTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain.docstore.in_memory import InMemoryDocstore
-import os
 import faiss
 import cloudpickle
 from transformers import (
@@ -70,7 +70,7 @@ def populate_vector_db(DB_PATH="./db/"):
         # Read the content of the file.
         content = open(wiki_file_path, "r").read()
         # Split the content into smaller chunks for better manageability.
-        for chunk in TokenTextSplitter(chunk_size=256).split_text(content):
+        for chunk in TokenTextSplitter(chunk_size=256, chunk_overlap=10).split_text(content):
             random_uuid = str(uuid.uuid4())
             texts.append(chunk)
             
