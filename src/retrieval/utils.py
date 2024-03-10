@@ -2,7 +2,7 @@ import uuid
 import copy
 import os
 import json
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
 
 from ..utils import absoluteFilePaths
 

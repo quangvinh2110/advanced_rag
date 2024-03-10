@@ -2,7 +2,7 @@
 import uuid
 from langchain.text_splitter import TokenTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores.faiss import FAISS
 from langchain.docstore.in_memory import InMemoryDocstore
 import os
 import faiss
