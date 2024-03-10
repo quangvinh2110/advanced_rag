@@ -12,7 +12,7 @@ from langchain.text_splitter import TextSplitter
 def read_corpus_dir(path: str, extension: str) -> List[dict]:
     
     if extension == "text":
-        load_file = lambda f : {"text": f.read()}
+        load_file = lambda f : {"text": f.read(), "filepath": f.name}
     elif extension == "json":
         load_file = lambda f : json.loads(f.read())
     else:
@@ -32,12 +32,12 @@ def read_corpus_dir(path: str, extension: str) -> List[dict]:
         
 
 def docs_chunking(
-    input_dir: Optional[str],
-    extension: Optional[str],
-    docs: Optional[List[dict]], 
-    output_dir: str,
-    text_splitter: TextSplitter,
-    add_chunk_metadata: Callable[[Any, Any], dict]
+    input_dir: Optional[str] = None,
+    extension: Optional[str] = None,
+    docs: Optional[List[dict]] = None, 
+    output_dir: str = None,
+    text_splitter: TextSplitter = None,
+    add_chunk_metadata: Callable[[dict, str], dict] = None
 ) -> Tuple[List[str], List[dict]]:
     
     output_dir = os.path.abspath(output_dir)
@@ -52,12 +52,12 @@ def docs_chunking(
             "You must provide extension of files in corpus folder"
         )
         
-    chunks = []
-    metadatas = []
+    chunks_text = []
+    chunks_metadata = []
     for doc in docs:
         for chunk in text_splitter.split_text(doc["text"]):
 
-            chunks.append(chunk)
+            chunks_text.append(chunk)
             
             chunk_metadata = add_chunk_metadata(doc, chunk)
             if "id" in chunk_metadata:
@@ -74,6 +74,6 @@ def docs_chunking(
                     **chunk_metadata
                 }, ensure_ascii=False, indent=4)
             )
-            metadatas.append(chunk_metadata)
+            chunks_metadata.append(chunk_metadata)
 
-    return chunks, metadatas
+    return chunks_text, chunks_metadata
