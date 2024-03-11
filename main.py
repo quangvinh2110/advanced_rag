@@ -14,12 +14,19 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain.docstore.in_memory import InMemoryDocstore
-from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
-from langchain.prompts import PromptTemplate
+from langchain_community.llms.huggingface_text_gen_inference import (
+        HuggingFaceTextGenInference,
+)
+from langchain_community.callbacks import streaming_stdout
+from langchain_community.chat_models.huggingface import ChatHuggingFace
+from langchain.schema import (
+    SystemMessage,
+    HumanMessage,
+    AIMessage
+)
 from langchain.schema.runnable import RunnableMap    
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
-
 
 from src.retrieval.utils import docs_chunking
 from src.prompts import RAG_TEMPLATE
@@ -114,30 +121,26 @@ def populate_vector_db():
 
 # Function to configure and retrieve a large language model from Hugging Face.
 def get_llm():
-    # return print
+    
     # Define the model name and retrieve the necessary token for authentication.
-    model_name = "bardsai/jaskier-7b-dpo-v5.6"
-    token = "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"
-
-    # Configure the model for quantization to reduce memory usage.
-    bnb_config = BitsAndBytesConfig(load_in_8bit=True)
-    device_map = {"": 0}
-
-    # Load the model and tokenizer from Hugging Face with the specified configurations.
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        quantization_config=bnb_config,
-        device_map=device_map,
-        use_auth_token=token
+    callbacks = [streaming_stdout.StreamingStdOutCallbackHandler()]
+    llm = HuggingFaceTextGenInference(
+        inference_server_url="http://localhost:8010/",
+        max_new_tokens=512,
+        top_k=10,
+        top_p=0.95,
+        typical_p=0.95,
+        temperature=0.01,
+        repetition_penalty=1.03,
+        callbacks=callbacks,
+        streaming=True
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=token)
 
-    # Create a pipeline for text generation using the loaded model and tokenizer.
-    llama_pipeline = pipeline(task="text-generation", model=model, tokenizer=tokenizer, 
-                              model_kwargs={'temperature':0.7, 'max_length': 8192})
-    llm = HuggingFacePipeline(pipeline=llama_pipeline)
-
-    return llm
+    # Load the tokenizer from Hugging Face with the specified configurations.
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    tokenizer.chat_template = ""
+    chat_model = ChatHuggingFace(llm=llm, tokenizer=tokenizer)
+    return chat_model
 
 # Function to format a list of documents into a single string.
 # def format_docs(docs):
@@ -154,6 +157,9 @@ def ask(q):
     llm = get_llm()
 
     # Create chains of operations to process the question.   
+    base_chain = (
+        
+    )
     rag_chain = (
         {"documents": db.as_retriever(), "question": RunnablePassthrough()}
         | {
