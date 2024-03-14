@@ -17,6 +17,7 @@ from langchain.docstore.in_memory import InMemoryDocstore
 from langchain_community.llms.huggingface_text_gen_inference import (
         HuggingFaceTextGenInference,
 )
+from langchain_community.llms.huggingface_endpoint import HuggingFaceEndpoint
 from langchain_community.callbacks import streaming_stdout
 from langchain_community.chat_models.huggingface import ChatHuggingFace
 from langchain.schema import (
